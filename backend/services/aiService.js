@@ -13,6 +13,71 @@ IMPORTANT:
 - Provide actionable advice
 - Each section must be detailed (2-3 sentences minimum)
 
+-----------------------------------
+CRITICAL VALIDATION RULES (MUST FOLLOW)
+-----------------------------------
+
+1. FIRST check if the report is a valid clinical medical report.
+
+A valid report should contain:
+- Patient details
+- Medical observations
+- Clinical values (BP, sugar, hemoglobin, SpO2, etc.)
+
+If the report is:
+- Random text
+- Non-medical
+- Resume / invoice / unrelated file
+- OR lacks meaningful clinical data
+
+THEN RETURN EXACTLY THIS JSON:
+
+{
+  "surgery_risk": { "level": "UNKNOWN", "percentage": 0, "explanation": "Invalid report. Please upload a proper clinical medical report." },
+  "mortality_risk": { "level": "UNKNOWN", "explanation": "Insufficient valid medical data." },
+  "asa_score": "UNKNOWN",
+  "cardiac_risk": { "level": "UNKNOWN", "reason": "Invalid input data" },
+  "respiratory_risk": { "level": "UNKNOWN", "reason": "Invalid input data" },
+  "blood_risk": { "level": "UNKNOWN", "reason": "Invalid input data" },
+  "key_risk_factors": [],
+  "critical_flags": ["INVALID_REPORT"],
+  "recommended_tests": [],
+  "doctor_advice": ["Please upload a valid clinical report"],
+  "patient_friendly_summary": {
+    "condition_explanation": "The uploaded file is not a valid medical report.",
+    "why_it_matters": "Without proper clinical data, accurate assessment is not possible.",
+    "risk_impact": "Risk cannot be determined.",
+    "what_to_do": "Upload a proper clinical report with medical details."
+  },
+  "final_decision": "Cannot assess",
+  "surgery_timeline": "Not available",
+  "confidence_score": 0,
+  "disclaimer": "Invalid input data"
+}
+
+-----------------------------------
+2. CHECK DATA SUFFICIENCY
+-----------------------------------
+
+If report + patient data is not enough for analysis:
+
+RETURN SAME JSON FORMAT WITH:
+- levels = "UNKNOWN"
+- confidence_score = 0
+- critical_flags include "INSUFFICIENT_DATA"
+
+-----------------------------------
+3. STRICT ANALYSIS RULES
+-----------------------------------
+
+ONLY if valid:
+- Use ONLY given data
+- DO NOT assume
+- DO NOT hallucinate
+- DO NOT create fake values
+
+-----------------------------------
+
 Patient Data:
 Age: ${patientData.age}
 BP: ${patientData.bp}
@@ -23,6 +88,7 @@ Conditions: ${patientData.conditions || "None"}
 Report:
 ${reportText}
 
+-----------------------------------
 Return STRICT JSON:
 {
   "surgery_risk": { "level": "", "percentage": 0, "explanation": "" },
@@ -51,7 +117,10 @@ Return STRICT JSON:
     const response = await axios.post(
       `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
       {
-        contents: [{ parts: [{ text: prompt }] }]
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: {
+          temperature: 0   // 🔥 reduces hallucination
+        }
       }
     );
 
@@ -66,12 +135,11 @@ Return STRICT JSON:
 };
 
 
-// 🔥 UPDATED FALLBACK FUNCTION
+// 🔥 UPDATED FALLBACK FUNCTION (UNCHANGED)
 function generateFallback(data, report) {
 
   const reportLower = report.toLowerCase();
 
-  // ✅ Only FORCE decision, not full response
   let forceDecision = null;
 
   if (reportLower.includes("postponed") || reportLower.includes("delay")) {
@@ -85,13 +153,11 @@ function generateFallback(data, report) {
   let riskScore = 0;
   let alerts = [];
 
-  // 🔹 Patient data
   if (data.conditions?.toLowerCase().includes("diabetes")) {
     riskScore += 2;
     alerts.push("Diabetes");
   }
 
-  // 🔹 Report parsing
   if (reportLower.includes("blood pressure") && reportLower.includes("high")) {
     riskScore += 2;
     alerts.push("High Blood Pressure");
@@ -129,7 +195,6 @@ function generateFallback(data, report) {
 
   alerts = [...new Set(alerts)];
 
-  // 🔹 Risk calculation
   let surgeryRisk = "Low";
   let riskPercentage = 20;
 
@@ -143,7 +208,6 @@ function generateFallback(data, report) {
 
   let mortalityRisk = riskScore >= 5 ? "High" : riskScore >= 3 ? "Moderate" : "Low";
 
-  // 🔹 Cardiac logic
   let cardiacLevel = "Low";
   if (alerts.includes("High Blood Pressure") && alerts.includes("High Cholesterol")) {
     cardiacLevel = "High";
@@ -151,10 +215,8 @@ function generateFallback(data, report) {
     cardiacLevel = "Moderate";
   }
 
-  // 🔹 Respiratory logic
   let respiratoryLevel = alerts.includes("Low Oxygen Level") ? "Moderate" : "Low";
 
-  // 🔹 FINAL DECISION (with override)
   let decision = forceDecision || (
     surgeryRisk === "High" ? "Delay surgery" :
     surgeryRisk === "Moderate" ? "Proceed with caution" :
@@ -200,14 +262,10 @@ function generateFallback(data, report) {
       "Follow doctor advice"
     ],
 
-    // 🔥 NEW DYNAMIC DETAILED SUMMARY
     patient_friendly_summary: {
       condition_explanation: `Your health condition shows ${surgeryRisk} surgical risk due to factors like ${alerts.join(", ")}.`,
-
       why_it_matters: `These conditions affect how your body responds to surgery and recovery and may increase complications.`,
-
       risk_impact: `If not managed properly, this can lead to serious complications during or after surgery.`,
-
       what_to_do: `You should stabilize your condition, follow medical advice, and improve your health before surgery.`
     },
 
