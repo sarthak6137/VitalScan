@@ -34,12 +34,28 @@ app.use(cors({
     allowedHeaders: ["Content-Type", "Authorization"]
 }));
 
-app.use((req, res, next) => {
-    if (req.method === 'OPTIONS') {
-        return cors()(req, res, next);
+const allowedOrigins = [
+  "https://vital-scan-beta.vercel.app",
+  "https://vital-scan-ctaz27f3y-sarthak-gokhales-projects.vercel.app",
+  "http://localhost:5173"
+];
+
+app.use(cors({
+  origin: function (origin, callback) {
+    if (!origin) return callback(null, true); // allow Postman / mobile
+
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    } else {
+      console.log("❌ Blocked by CORS:", origin);
+      return callback(new Error("Not allowed by CORS"));
     }
-    next();
-});
+  },
+  credentials: true
+}));
+
+// ✅ VERY IMPORTANT (fixes preflight)
+app.options(/.*/, cors());
 
 app.use(express.json());
 
