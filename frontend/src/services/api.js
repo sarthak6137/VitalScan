@@ -1,19 +1,12 @@
 import axios from 'axios';
 
-const api = axios.create({
-  // 🔥 Added /api to the end of both URLs to match your backend routes
-  baseURL: import.meta.env.VITE_API_URL 
-    ? `${import.meta.env.VITE_API_URL}/api` 
-    : 'https://vitalscan-backend-f16z.onrender.com/api',
-});
+// We trim to remove any accidental spaces from environment variables
+const rawBaseURL = import.meta.env.VITE_API_URL || 'https://vitalscan-backend-f16z.onrender.com';
+const baseURL = `${rawBaseURL.replace(/\/$/, "")}/api`; 
 
-// Automatically attach the JWT token to every request if it exists
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
+const api = axios.create({
+  baseURL: baseURL,
+  withCredentials: true // Required for sending cookies/headers across domains
 });
 
 export default api;

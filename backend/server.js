@@ -4,14 +4,14 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const helmet = require('helmet');
 const fs = require('fs');
-const path = require('path'); // Added for path handling
+const path = require('path');
 
 const authRoutes = require('./routes/authRoutes');
 const reportRoutes = require('./routes/reportRoutes');
 
 const app = express();
 
-// 🔥 FIX 1: Use Absolute Path for Uploads (Important for Render)
+// Absolute Path for Uploads
 const uploadDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir, { recursive: true });
@@ -19,18 +19,27 @@ if (!fs.existsSync(uploadDir)) {
 
 // Security
 app.use(helmet({
-    crossOriginResourcePolicy: false, // Allows images/files to be served if needed
+    crossOriginResourcePolicy: false,
 }));
 
-// 🔥 FIX 2: Restricted CORS for Production
-// Replace the URL with your actual Vercel deployment URL
+
 app.use(cors({
     origin: [
-        "vital-scan-ctaz27f3y-sarthak-gokhales-projects.vercel.app", 
-        "http://localhost:5173" // Keep local development working
+        "https://vital-scan-beta.vercel.app", // Use your main production URL
+        "https://vital-scan-ctaz27f3y-sarthak-gokhales-projects.vercel.app", // Your specific build URL
+        "http://localhost:5173"
     ],
-    credentials: true
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"]
 }));
+
+app.use((req, res, next) => {
+    if (req.method === 'OPTIONS') {
+        return cors()(req, res, next);
+    }
+    next();
+});
 
 app.use(express.json());
 
@@ -53,14 +62,11 @@ app.use((err, req, res, next) => {
 
 // Database Connection
 const PORT = process.env.PORT || 5000;
-
-// Set strictQuery to suppress warning in newer Mongoose versions
 mongoose.set('strictQuery', false);
 
 mongoose.connect(process.env.MONGO_URI)
   .then(() => {
     console.log("✅ MongoDB Connected Successfully");
-    // Listen on 0.0.0.0 is correct for Render
     app.listen(PORT, "0.0.0.0", () => {
       console.log(`🚀 VitalScan AI Server live on Port: ${PORT}`);
     });
