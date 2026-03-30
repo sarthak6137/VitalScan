@@ -26,7 +26,7 @@ app.use(helmet({
 // Replace the URL with your actual Vercel deployment URL
 app.use(cors({
     origin: [
-        "https://your-vitalscan-app.vercel.app", 
+        "vital-scan-ctaz27f3y-sarthak-gokhales-projects.vercel.app", 
         "http://localhost:5173" // Keep local development working
     ],
     credentials: true
