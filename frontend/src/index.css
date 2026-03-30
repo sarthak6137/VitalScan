@@ -1,0 +1,17 @@
+@import "tailwindcss";
+
+@theme {
+  --color-navy-900: #1a365d;
+  --color-navy-800: #2a4365;
+  --color-medical-50: #ebf8ff;
+  --color-medical-100: #bee3f8;
+  --color-medical-500: #4299e1;
+  --color-medical-600: #3182ce;
+  
+  --radius-medical: 1rem;
+}
+
+/* Custom utility for glassmorphism in the dashboard */
+.glass-card {
+  @apply bg-white/80 backdrop-blur-md border border-white/20 shadow-xl;
+}
