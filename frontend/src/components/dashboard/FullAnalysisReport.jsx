@@ -1,7 +1,7 @@
 import React from 'react';
 import { 
   AlertOctagon, CheckCircle2, ClipboardList, 
-  Stethoscope, Activity, ShieldAlert, Heart, Wind, Droplets, Info, TrendingDown
+  Stethoscope, Activity, ShieldAlert, Heart, Wind, Droplets, Info, TrendingDown, FileWarning
 } from 'lucide-react';
 
 const FullAnalysisReport = ({ data }) => {
@@ -9,7 +9,38 @@ const FullAnalysisReport = ({ data }) => {
 
   const { aiResponse, ai_message, createdAt } = data;
 
-  // 🔥 HELPER: Renders the summary object with tight, structured lines to save space
+  // 🔥 NEW: GUARDRAIL FOR INVALID REPORTS
+  // If the backend flagged this as an invalid report, show the Error State immediately
+  if (aiResponse.critical_flags?.includes("INVALID_REPORT") || aiResponse.surgery_risk?.level === "UNKNOWN") {
+    return (
+      <div className="max-w-2xl mx-auto p-8 bg-white rounded-3xl border-2 border-red-100 shadow-xl text-center animate-in fade-in zoom-in duration-500">
+        <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+          <FileWarning size={40} className="text-red-600" />
+        </div>
+        <h2 className="text-2xl font-black text-navy-900 mb-2">Invalid Document Detected</h2>
+        <p className="text-slate-600 mb-6 leading-relaxed">
+          {aiResponse.surgery_risk?.explanation || "The uploaded file does not appear to be a clinical medical report. Please ensure you upload a PDF containing patient vitals and lab results."}
+        </p>
+        <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 text-left mb-6">
+          <h4 className="text-[10px] font-black uppercase text-slate-400 mb-2 tracking-widest">Why was this rejected?</h4>
+          <ul className="text-xs text-slate-500 space-y-2">
+            <li>• Document lacks clinical markers (BP, SpO2, Hemoglobin)</li>
+            <li>• Content matches non-medical patterns (Resume, Invoice, etc.)</li>
+            <li>• Insufficient data to generate a safe surgical assessment</li>
+          </ul>
+        </div>
+        <button 
+          onClick={() => window.location.reload()} 
+          className="bg-navy-900 text-white px-8 py-3 rounded-xl font-bold hover:bg-medical-600 transition-colors"
+        >
+          Try Again with Medical PDF
+        </button>
+      </div>
+    );
+  }
+
+  // --- REST OF YOUR BEAUTIFUL DASHBOARD CODE ---
+
   const renderSummaryContent = (summary) => {
     if (typeof summary === 'string') return <p>{summary}</p>;
     if (typeof summary === 'object' && summary !== null) {
@@ -30,7 +61,7 @@ const FullAnalysisReport = ({ data }) => {
   return (
     <div className="space-y-6 pb-20 animate-in fade-in slide-in-from-bottom-4 duration-700">
       
-      {/* 1. DOCTOR GREETING (Tightened Sizing & Line Height) */}
+      {/* 1. DOCTOR GREETING */}
       <div className="bg-navy-900 text-white p-6 md:p-8 rounded-3xl shadow-2xl relative overflow-hidden border-b-8 border-medical-500">
         <div className="relative z-10 max-w-4xl">
           <div className="flex items-center gap-2 text-medical-400 mb-3">
@@ -40,7 +71,6 @@ const FullAnalysisReport = ({ data }) => {
           
           <div className="mb-4">
             <h2 className="text-lg md:text-xl font-bold leading-tight">
-              {/* Extracts only the first line/greeting to keep it short */}
               {typeof ai_message === 'string' ? ai_message.split('\n').filter(l => l.trim())[0] : 'Hi Patient,'}
               <span className="text-medical-400 font-medium italic block text-sm mt-0.5">I am your AI Doctor.</span>
             </h2>
@@ -162,7 +192,7 @@ const FullAnalysisReport = ({ data }) => {
   );
 };
 
-/* --- SUB COMPONENTS (ALIGNED & SIZED) --- */
+/* --- SUB COMPONENTS --- */
 
 const RiskMainCard = ({ title, value, percent, desc }) => (
   <div className={`p-6 rounded-3xl border-2 shadow-sm flex flex-col h-full ${value === 'High' ? 'bg-red-50 border-red-200' : 'bg-white border-slate-200'}`}>
